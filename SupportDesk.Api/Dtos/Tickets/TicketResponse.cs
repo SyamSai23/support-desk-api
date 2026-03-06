@@ -7,4 +7,8 @@ public class TicketResponse
     public string Description { get; set; } = "";
     public string Status { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+
+    public int? CreatedByUserId { get; set; }
+    public int? AssignedToUserId { get; set; }
+    public string? AssignedToUserEmail { get; set; }
 }

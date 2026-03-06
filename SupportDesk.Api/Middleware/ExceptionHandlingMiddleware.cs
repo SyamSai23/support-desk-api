@@ -32,6 +32,7 @@ public class ExceptionHandlingMiddleware
             var statusCode = ex switch
             {
                 UnauthorizedAccessException => StatusCodes.Status403Forbidden,
+                InvalidOperationException => StatusCodes.Status400BadRequest,
                 _ => StatusCodes.Status500InternalServerError
             };
 

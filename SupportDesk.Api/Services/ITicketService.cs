@@ -16,7 +16,17 @@ public interface ITicketService
 
     Task<TicketResponse> CreateAsync(CreateTicketRequest req, int createdByUserId);
 
-    Task<TicketResponse?> UpdateAsync(int id, UpdateTicketRequest req, string callerRole);
+    Task<TicketResponse?> UpdateAsync(
+        int id,
+        UpdateTicketRequest req,
+        int callerUserId,
+        string callerRole);
 
-    Task<bool> DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id, int callerUserId, string callerRole);
+
+    Task<TicketResponse?> AssignAsync(int id, int assignedToUserId, string callerRole);
+
+    Task<List<(int Id, string Email)>> GetAssignableAgentsAsync(string callerRole);
+
+    Task<PagedResult<TicketResponse>> GetAssignedToMeAsync(int page, int pageSize, int callerUserId, string callerRole);
 }

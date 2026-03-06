@@ -11,15 +11,24 @@ public class TicketCommentService : ITicketCommentService
 
     public TicketCommentService(AppDbContext db) => _db = db;
 
-    public async Task<CommentResponse?> AddCommentAsync(int ticketId, int userId, string message)
+    public async Task<CommentResponse?> AddCommentAsync(int ticketId, int callerUserId, string callerRole, string message)
     {
-        var ticketExists = await _db.Tickets.AnyAsync(t => t.Id == ticketId);
-        if (!ticketExists) return null;
+        var isAgentOrAdmin = callerRole == "Agent" || callerRole == "Admin";
+
+        var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.Id == ticketId);
+        if (ticket is null) return null;
+
+        var isOwner = ticket.CreatedByUserId == callerUserId;
+
+        if (!isAgentOrAdmin && !isOwner)
+        {
+            throw new UnauthorizedAccessException("You can comment only on your own tickets.");
+        }
 
         var comment = new TicketComment
         {
             TicketId = ticketId,
-            UserId = userId,
+            UserId = callerUserId,
             Message = message.Trim(),
             CreatedAt = DateTime.UtcNow
         };
@@ -28,7 +37,7 @@ public class TicketCommentService : ITicketCommentService
         await _db.SaveChangesAsync();
 
         var userEmail = await _db.Users
-            .Where(u => u.Id == userId)
+            .Where(u => u.Id == callerUserId)
             .Select(u => u.Email)
             .FirstAsync();
 

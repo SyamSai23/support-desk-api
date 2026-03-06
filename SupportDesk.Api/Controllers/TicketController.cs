@@ -30,12 +30,34 @@ public class TicketsController : ControllerBase
     {
         var userIdStr = User.FindFirstValue("uid");
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
-
         if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-
         var result = await _service.GetAllPagedAsync(page, pageSize, status, search, userId, role);
+        return Ok(result);
+    }
+
+    [HttpGet("assigned-to-me")]
+    public async Task<ActionResult<PagedResult<TicketResponse>>> GetAssignedToMe(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var userIdStr = User.FindFirstValue("uid");
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
+
+        var userId = int.Parse(userIdStr);
+        var result = await _service.GetAssignedToMeAsync(page, pageSize, userId, role);
+        return Ok(result);
+    }
+
+    [HttpGet("assignable-agents")]
+    public async Task<IActionResult> GetAssignableAgents()
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        var agents = await _service.GetAssignableAgentsAsync(role);
+
+        var result = agents.Select(a => new { id = a.Id, email = a.Email });
         return Ok(result);
     }
 
@@ -44,14 +66,12 @@ public class TicketsController : ControllerBase
     {
         var userIdStr = User.FindFirstValue("uid");
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
-
         if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-
         var ticket = await _service.GetByIdAsync(id, userId, role);
-        if (ticket is null) return NotFound(new { error = $"Ticket {id} not found" });
 
+        if (ticket is null) return NotFound(new { error = $"Ticket {id} not found" });
         return Ok(ticket);
     }
 
@@ -62,7 +82,6 @@ public class TicketsController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-
         var created = await _service.CreateAsync(req, userId);
         return Created($"/tickets/{created.Id}", created);
     }
@@ -70,20 +89,38 @@ public class TicketsController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<TicketResponse>> Update(int id, UpdateTicketRequest req)
     {
+        var userIdStr = User.FindFirstValue("uid");
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
-        var updated = await _service.UpdateAsync(id, req, role);
+        var userId = int.Parse(userIdStr);
+        var updated = await _service.UpdateAsync(id, req, userId, role);
+
         if (updated is null) return NotFound(new { error = $"Ticket {id} not found" });
+        return Ok(updated);
+    }
 
+    [HttpPut("{id:int}/assign")]
+    public async Task<ActionResult<TicketResponse>> Assign(int id, AssignTicketRequest req)
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        var updated = await _service.AssignAsync(id, req.AssignedToUserId, role);
+
+        if (updated is null) return NotFound(new { error = $"Ticket {id} not found" });
         return Ok(updated);
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _service.DeleteAsync(id);
-        if (!deleted) return NotFound(new { error = $"Ticket {id} not found" });
+        var userIdStr = User.FindFirstValue("uid");
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
+        var userId = int.Parse(userIdStr);
+        var deleted = await _service.DeleteAsync(id, userId, role);
+
+        if (!deleted) return NotFound(new { error = $"Ticket {id} not found" });
         return NoContent();
     }
 
@@ -92,14 +129,12 @@ public class TicketsController : ControllerBase
     {
         var userIdStr = User.FindFirstValue("uid");
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
-
         if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-
         var items = await _comments.GetCommentsAsync(id, userId, role);
-        if (items is null) return NotFound(new { error = $"Ticket {id} not found" });
 
+        if (items is null) return NotFound(new { error = $"Ticket {id} not found" });
         return Ok(items);
     }
 
@@ -107,13 +142,13 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<CommentResponse>> AddComment(int id, CreateCommentRequest req)
     {
         var userIdStr = User.FindFirstValue("uid");
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
         if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
+        var created = await _comments.AddCommentAsync(id, userId, role, req.Message);
 
-        var created = await _comments.AddCommentAsync(id, userId, req.Message);
         if (created is null) return NotFound(new { error = $"Ticket {id} not found" });
-
         return Created($"/tickets/{id}/comments/{created.Id}", created);
     }
 }

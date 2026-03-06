@@ -21,6 +21,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Ticket>()
+            .HasOne(t => t.AssignedToUser)
+            .WithMany()
+            .HasForeignKey(t => t.AssignedToUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<TicketComment>()
             .HasOne(tc => tc.Ticket)
             .WithMany()
