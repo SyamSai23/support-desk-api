@@ -11,13 +11,26 @@ public class TicketService : ITicketService
 
     public TicketService(AppDbContext db) => _db = db;
 
-    public async Task<PagedResult<TicketResponse>> GetAllPagedAsync(int page, int pageSize, string? status, string? search)
+    public async Task<PagedResult<TicketResponse>> GetAllPagedAsync(
+        int page,
+        int pageSize,
+        string? status,
+        string? search,
+        int callerUserId,
+        string callerRole)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : pageSize;
-        pageSize = pageSize > 50 ? 50 : pageSize; // safety cap
+        pageSize = pageSize > 50 ? 50 : pageSize;
 
         var query = _db.Tickets.AsQueryable();
+
+        var isAgentOrAdmin = callerRole == "Agent" || callerRole == "Admin";
+
+        if (!isAgentOrAdmin)
+        {
+            query = query.Where(t => t.CreatedByUserId == callerUserId);
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(t => t.Status == status);
@@ -56,10 +69,18 @@ public class TicketService : ITicketService
         };
     }
 
-    public async Task<TicketResponse?> GetByIdAsync(int id)
+    public async Task<TicketResponse?> GetByIdAsync(int id, int callerUserId, string callerRole)
     {
-        return await _db.Tickets
-            .Where(t => t.Id == id)
+        var isAgentOrAdmin = callerRole == "Agent" || callerRole == "Admin";
+
+        var query = _db.Tickets.Where(t => t.Id == id);
+
+        if (!isAgentOrAdmin)
+        {
+            query = query.Where(t => t.CreatedByUserId == callerUserId);
+        }
+
+        return await query
             .Select(t => new TicketResponse
             {
                 Id = t.Id,
@@ -95,10 +116,17 @@ public class TicketService : ITicketService
         };
     }
 
-    public async Task<TicketResponse?> UpdateAsync(int id, UpdateTicketRequest req)
+    public async Task<TicketResponse?> UpdateAsync(int id, UpdateTicketRequest req, string callerRole)
     {
         var ticket = await _db.Tickets.FindAsync(id);
         if (ticket is null) return null;
+
+        var isAgentOrAdmin = callerRole == "Agent" || callerRole == "Admin";
+
+        if (!isAgentOrAdmin && !string.Equals(ticket.Status, req.Status, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Only Agent or Admin can change ticket status.");
+        }
 
         ticket.Title = req.Title.Trim();
         ticket.Description = req.Description.Trim();

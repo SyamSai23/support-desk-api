@@ -18,8 +18,7 @@ public class UpdateTicketRequestValidator : AbstractValidator<UpdateTicketReques
             .MaximumLength(2000).WithMessage("Description must be <= 2000 characters");
 
         RuleFor(x => x.Status)
-            .NotEmpty().WithMessage("Status is required")
-            .Must(s => AllowedStatuses.Contains(s))
+            .Must(s => string.IsNullOrWhiteSpace(s) || AllowedStatuses.Contains(s))
             .WithMessage("Status must be Open, InProgress, or Closed");
-    }
+            }
 }

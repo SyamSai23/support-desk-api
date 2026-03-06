@@ -33,7 +33,27 @@ public class AuthService : IAuthService
         var user = new User
         {
             Email = email,
-            Role = string.IsNullOrWhiteSpace(req.Role) ? "User" : req.Role.Trim()
+            Role = "User"
+        };
+
+        user.PasswordHash = _hasher.HashPassword(user, req.Password);
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> CreateUserAsync(CreateUserRequest req)
+    {
+        var email = req.Email.Trim().ToLowerInvariant();
+
+        if (await _db.Users.AnyAsync(u => u.Email == email))
+            return false;
+
+        var user = new User
+        {
+            Email = email,
+            Role = req.Role.Trim()
         };
 
         user.PasswordHash = _hasher.HashPassword(user, req.Password);

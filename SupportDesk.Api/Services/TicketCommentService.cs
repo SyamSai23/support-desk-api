@@ -43,8 +43,20 @@ public class TicketCommentService : ITicketCommentService
         };
     }
 
-    public async Task<List<CommentResponse>> GetCommentsAsync(int ticketId)
+    public async Task<List<CommentResponse>?> GetCommentsAsync(int ticketId, int callerUserId, string callerRole)
     {
+        var isAgentOrAdmin = callerRole == "Agent" || callerRole == "Admin";
+
+        var ticketQuery = _db.Tickets.Where(t => t.Id == ticketId);
+
+        if (!isAgentOrAdmin)
+        {
+            ticketQuery = ticketQuery.Where(t => t.CreatedByUserId == callerUserId);
+        }
+
+        var canAccess = await ticketQuery.AnyAsync();
+        if (!canAccess) return null;
+
         return await _db.TicketComments
             .Where(c => c.TicketId == ticketId)
             .OrderBy(c => c.CreatedAt)

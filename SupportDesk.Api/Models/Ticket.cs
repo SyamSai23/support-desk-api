@@ -7,6 +7,6 @@ public class Ticket
     public string Description { get; set; } = ""; // required
     public string Status { get; set; } = "Open";  // Open / InProgress / Closed
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int CreatedByUserId { get; set; }
+    public int? CreatedByUserId { get; set; }
     public User? CreatedByUser { get; set; }
 }

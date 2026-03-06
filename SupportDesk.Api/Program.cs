@@ -93,4 +93,5 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/", () => "SupportDesk API is running...");
 
+await DbSeeder.SeedAdminAsync(app.Services);
 app.Run();

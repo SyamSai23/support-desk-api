@@ -29,14 +29,20 @@ public class ExceptionHandlingMiddleware
         {
             _logger.LogError(ex, "Unhandled exception");
 
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            var statusCode = ex switch
+            {
+                UnauthorizedAccessException => StatusCodes.Status403Forbidden,
+                _ => StatusCodes.Status500InternalServerError
+            };
+
+            context.Response.StatusCode = statusCode;
             context.Response.ContentType = "application/problem+json";
 
             var problem = new ProblemDetails
             {
-                Status = context.Response.StatusCode,
-                Title = "Something went wrong",
-                Type = "https://httpstatuses.com/500",
+                Status = statusCode,
+                Title = statusCode == 403 ? "Forbidden" : "Something went wrong",
+                Type = $"https://httpstatuses.com/{statusCode}",
                 Detail = _env.IsDevelopment() ? ex.Message : null,
                 Instance = context.Request.Path
             };
